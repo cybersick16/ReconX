@@ -1,0 +1,5 @@
+{
+  "name": "ReconX ",
+  "description": "An integrated vulnerability scanning and analysis platform. It normalizes scan results, visualizes attack paths, and includes a RAG-powered chatbot to answer questions about vulnerabilities and remediation.",
+  "requestFramePermissions": []
+}
