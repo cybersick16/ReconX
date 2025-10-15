@@ -34,9 +34,8 @@ interface ChatMessage {
 
           <div #chatContainer class="flex-1 p-4 overflow-y-auto space-y-4 bg-black/10">
             @for (message of messages(); track $index) {
-              <div class="flex" [class.justify-end]="message.role === 'user'">
-                <div class="rounded-lg px-4 py-2 max-w-xs border"
-                     [class]="message.role === 'user' ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/50' : 'bg-violet-500/10 text-violet-200 border-violet-500/30'">
+              <div class="flex">
+                <div class="rounded-lg px-4 py-2 max-w-xs border bg-violet-500/10 text-violet-200 border-violet-500/30">
                   {{ message.text }}
                 </div>
               </div>

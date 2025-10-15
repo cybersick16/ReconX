@@ -6,6 +6,9 @@ import { GeminiService } from '../../services/gemini.service';
 import { Vulnerability } from '../../models/scan.model';
 import { AttackPathComponent } from '../attack-path/attack-path.component';
 
+declare const jspdf: any;
+declare const html2canvas: any;
+
 @Component({
   selector: 'app-scan-report',
   template: `
@@ -114,7 +117,7 @@ import { AttackPathComponent } from '../attack-path/attack-path.component';
         <div>
             <h3 class="text-2xl font-orbitron font-semibold mb-4 text-white">Attack Paths</h3>
             @for (path of r.attackPaths; track path.id) {
-              <div class="mb-6 glass-panel p-4">
+              <div [id]="'attack-path-' + path.id" class="mb-6 glass-panel p-4">
                 <h4 class="font-medium text-lg mb-2 text-cyan-300">{{ path.name }}</h4>
                 <app-attack-path [attackPath]="path"></app-attack-path>
               </div>
@@ -163,51 +166,112 @@ export class ScanReportComponent {
     }));
   }
 
-  exportReport(): void {
+  async exportReport(): Promise<void> {
     const report = this.report();
     if (!report) return;
 
-    let content = `# Scan Report: ${report.name}\n\n`;
-    content += `**Scanned on:** ${this.datePipe.transform(report.timestamp, 'medium')}\n\n`;
-    content += `## Summary\n`;
-    content += `- **Critical:** ${report.summary.critical}\n`;
-    content += `- **High:** ${report.summary.high}\n`;
-    content += `- **Medium:** ${report.summary.medium}\n`;
-    content += `- **Low:** ${report.summary.low}\n\n`;
+    const { jsPDF } = jspdf;
+    const doc = new jsPDF();
+    let yPos = 20;
+    const leftMargin = 15;
+    const contentWidth = 180;
 
-    content += `## Vulnerabilities\n\n`;
-    report.vulnerabilities.forEach(vuln => {
-      content += `### [${vuln.severity}] ${vuln.name}\n`;
-      content += `**Description:** ${vuln.description}\n`;
-      content += `**Affected Asset:** \`${vuln.affectedAsset}\`\n`;
-      content += `**Suggested Remediation:** ${vuln.remediation}\n`;
-      
+    doc.setFontSize(22);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Scan Report: ${report.name}`, leftMargin, yPos);
+    yPos += 10;
+
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Scanned on: ${this.datePipe.transform(report.timestamp, 'medium')}`, leftMargin, yPos);
+    yPos += 15;
+
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text('Summary', leftMargin, yPos);
+    yPos += 8;
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    const summaryText = `Critical: ${report.summary.critical}, High: ${report.summary.high}, Medium: ${report.summary.medium}, Low: ${report.summary.low}`;
+    doc.text(summaryText, leftMargin, yPos);
+    yPos += 15;
+
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text('Vulnerabilities', leftMargin, yPos);
+    yPos += 10;
+
+    for (const vuln of report.vulnerabilities) {
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text(`[${vuln.severity}] ${vuln.name}`, leftMargin, yPos);
+      yPos += 7;
+
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+
+      let descLines = doc.splitTextToSize(`Description: ${vuln.description}`, contentWidth - 5);
+      doc.text(descLines, leftMargin + 5, yPos);
+      yPos += descLines.length * 4 + 4;
+
+      doc.text(`Affected Asset: ${vuln.affectedAsset}`, leftMargin + 5, yPos);
+      yPos += 6;
+
       const analysis = this.analysisMap()[vuln.id];
       if (analysis && analysis !== 'Analyzing...') {
-        content += `\n**Gemini Analysis:**\n\`\`\`\n${analysis}\n\`\`\`\n`;
+        if (yPos > 260) { doc.addPage(); yPos = 20; }
+        doc.setFont(undefined, 'bold');
+        doc.text('Gemini Analysis:', leftMargin + 5, yPos);
+        yPos += 5;
+        doc.setFont(undefined, 'normal');
+        let analysisLines = doc.splitTextToSize(analysis, contentWidth - 10);
+        doc.text(analysisLines, leftMargin + 10, yPos);
+        yPos += analysisLines.length * 4 + 4;
       }
-      content += `\n---\n\n`;
-    });
-
-    if (report.attackPaths.length > 0) {
-      content += `## Attack Paths\n\n`;
-      report.attackPaths.forEach(path => {
-        content += `### ${path.name}\n`;
-        const pathString = path.nodes.map(n => n.label).join(' -> ');
-        content += `*Path:* ${pathString}\n\n`;
-      });
+      yPos += 8;
     }
 
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reconx-report-${report.id}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    if (report.attackPaths.length > 0) {
+      doc.addPage();
+      yPos = 20;
+      doc.setFontSize(18);
+      doc.setFont(undefined, 'bold');
+      doc.text('Attack Paths', leftMargin, yPos);
+      yPos += 10;
+
+      for (const path of report.attackPaths) {
+        const element = document.getElementById(`attack-path-${path.id}`) as HTMLElement;
+        const graphElement = element?.querySelector('app-attack-path > div') as HTMLElement;
+        if (graphElement) {
+          const canvas = await html2canvas(graphElement, { scale: 2, backgroundColor: '#1C1D24' });
+          const imgData = canvas.toDataURL('image/png');
+          const imgProps = doc.getImageProperties(imgData);
+          const pdfWidth = contentWidth;
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+          if (yPos + pdfHeight > 280) {
+            doc.addPage();
+            yPos = 20;
+          }
+
+          doc.setFontSize(14);
+          doc.setFont(undefined, 'bold');
+          doc.text(path.name, leftMargin, yPos);
+          yPos += 8;
+
+          doc.addImage(imgData, 'PNG', leftMargin, yPos, pdfWidth, pdfHeight);
+          yPos += pdfHeight + 10;
+        }
+      }
+    }
+
+    doc.save(`reconx-report-${report.id}.pdf`);
   }
+
 
   getSeverityClass(severity: 'Critical' | 'High' | 'Medium' | 'Low'): string {
     switch (severity) {
