@@ -11,6 +11,7 @@ import { HomeComponent } from '../home/home.component';
 
 @Component({
   selector: 'app-dashboard',
+  standalone: true,
   template: `
     <div class="flex h-screen bg-brand-dark font-sans text-brand-text">
       <!-- Sidebar -->

@@ -12,6 +12,7 @@ interface ChatMessage {
 
 @Component({
   selector: 'app-chat-assistant',
+  standalone: true,
   template: `
     <div class="fixed bottom-4 right-4 z-50">
       <button (click)="toggleChat()" class="bg-violet-600 text-white rounded-full p-4 shadow-lg hover:bg-violet-700 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 shadow-[0_0_20px_rgba(108,99,255,0.5)]">

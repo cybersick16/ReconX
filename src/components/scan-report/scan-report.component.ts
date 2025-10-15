@@ -11,6 +11,7 @@ declare const html2canvas: any;
 
 @Component({
   selector: 'app-scan-report',
+  standalone: true,
   template: `
     @if (report(); as r) {
       <div class="space-y-8">

@@ -5,6 +5,7 @@ import * as d3 from 'd3';
 
 @Component({
   selector: 'app-attack-path',
+  standalone: true,
   template: `<div #container class="w-full h-full" ></div>`,
   styles: [`
     :host {

@@ -4,6 +4,7 @@ import { DashboardComponent } from './components/dashboard/dashboard.component';
 
 @Component({
   selector: 'app-root',
+  standalone: true,
   template: `<app-dashboard></app-dashboard>`,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DashboardComponent],
